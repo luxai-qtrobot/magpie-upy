@@ -7,14 +7,14 @@
 
 <p align="center">
   <a href="#installation"><img src="https://img.shields.io/badge/platform-MicroPython-2f855a" alt="Platform: MicroPython"/></a>
-  <a href="#installation"><img src="https://img.shields.io/badge/board-ESP32--S3-e69534" alt="Tested board: ESP32-S3"/></a>
+  <a href="#installation"><img src="https://img.shields.io/badge/boards-ESP32%20%26%20Pico%20W-e69534" alt="Boards: ESP32 and Pico W"/></a>
   <a href="#features"><img src="https://img.shields.io/badge/transport-MQTT-8b5cf6" alt="Transport: MQTT"/></a>
   <a href="#mcp-tool"><img src="https://img.shields.io/badge/MCP-tools-118e78" alt="MCP tools"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/install-mip-3b82f6" alt="Install with mip"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-6b7280" alt="License: GPLv3"/></a>
 </p>
 
-MAGPIE for MicroPython brings asynchronous streams, request/reply RPC, typed frames, and MCP tools to embedded boards. It uses the same MQTT topics, MessagePack payloads, and RPC envelopes as [MAGPIE for Python](https://github.com/luxai-qtrobot/magpie), so an ESP32 can exchange data with desktop applications and tools.
+MAGPIE for MicroPython brings asynchronous streams, request/reply RPC, typed frames, and MCP tools to embedded boards. It uses the same MQTT topics, MessagePack payloads, and RPC envelopes as [MAGPIE for Python](https://github.com/luxai-qtrobot/magpie), so a MicroPython device can exchange data with desktop applications and tools.
 
 Repository: [luxai-qtrobot/magpie-upy](https://github.com/luxai-qtrobot/magpie-upy).
 
@@ -58,9 +58,11 @@ A stream may carry a plain value or a frame. The board can publish to a desktop 
 
 ### Requirements
 
-- A network-capable MicroPython board with `asyncio`. Development and device testing used a Seeed XIAO ESP32-S3 running MicroPython 1.29.0.
+- A MicroPython board with `asyncio`, enough memory for the package, and networking supported by the installed `mqtt_as` library. The examples use Wi-Fi.
 - An MQTT broker reachable by the board and its peers. The examples use the public `broker.hivemq.com` broker.
 - `mpremote` on your computer to install the package and run the examples over USB.
+
+The package itself does not depend on a specific board. Its MQTT dependency, [`mqtt_as`](https://github.com/peterhinch/micropython-mqtt), documents support for ESP32, ESP8266, Raspberry Pi Pico W, and other MicroPython targets. MAGPIE device testing so far used a Seeed XIAO ESP32-S3 running MicroPython 1.29.0; check firmware, available memory, and networking on other boards. ESP8266 may need `mqtt_as` precompiled or frozen because of its memory limits.
 
 The [`package.json`](package.json) manifest installs MAGPIE, [`mqtt_as`](https://github.com/peterhinch/micropython-mqtt), and [`umsgpack`](https://github.com/peterhinch/micropython-msgpack). `pip` installs the desktop tools on your computer; `mip` installs MicroPython files on the board.
 
@@ -73,7 +75,7 @@ python -m pip install mpremote
 mpremote connect COM13 mip install package.json
 ```
 
-`mpremote` uses the computer to fetch and copy the package. The board needs Wi-Fi when it runs an MQTT example.
+`mpremote` uses the computer to fetch and copy the package. The board needs network connectivity when it runs an MQTT example.
 
 ### Install a tagged release from GitHub
 
