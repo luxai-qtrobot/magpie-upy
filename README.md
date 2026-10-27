@@ -1,9 +1,18 @@
 <p align="center">
-  <img src="https://github.com/luxai-qtrobot/magpie/raw/main/src/luxai/magpie/assets/magpie.png" alt="MAGPIE logo" width="180"/>
+  <img src="https://github.com/luxai-qtrobot/magpie/raw/main/src/luxai/magpie/assets/magpie.png" alt="MAGPIE logo" width="200"/>
 </p>
 
 <h1 align="center">MAGPIE for MicroPython</h1>
-<p align="center"><em>Message Abstraction & General-Purpose Integration Engine for small devices</em></p>
+<p align="center"><em>Message Abstraction & General-Purpose Integration Engine</em></p>
+
+<p align="center">
+  <a href="#installation"><img src="https://img.shields.io/badge/platform-MicroPython-2f855a" alt="Platform: MicroPython"/></a>
+  <a href="#installation"><img src="https://img.shields.io/badge/board-ESP32--S3-e69534" alt="Tested board: ESP32-S3"/></a>
+  <a href="#features"><img src="https://img.shields.io/badge/transport-MQTT-8b5cf6" alt="Transport: MQTT"/></a>
+  <a href="#mcp-tool"><img src="https://img.shields.io/badge/MCP-tools-118e78" alt="MCP tools"/></a>
+  <a href="#installation"><img src="https://img.shields.io/badge/install-mip-3b82f6" alt="Install with mip"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-6b7280" alt="License: GPLv3"/></a>
+</p>
 
 MAGPIE for MicroPython brings asynchronous streams, request/reply RPC, typed frames, and MCP tools to embedded boards. It uses the same MQTT topics, MessagePack payloads, and RPC envelopes as [MAGPIE for Python](https://github.com/luxai-qtrobot/magpie), so an ESP32 can exchange data with desktop applications and tools.
 
