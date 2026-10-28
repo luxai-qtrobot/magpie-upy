@@ -31,6 +31,7 @@ The stream, RPC, and serializer layers are transport independent. The implementa
   - [User LED RPC](#user-led-rpc)
   - [MCP tool](#mcp-tool)
   - [Direct ZMQ on a LAN](#direct-zmq-on-a-lan)
+  - [JPEG camera stream](#jpeg-camera-stream)
 - [Core API](#core-api)
 - [Architecture and scope](#architecture-and-scope)
 - [Examples and tests](#examples-and-tests)
@@ -46,7 +47,7 @@ The stream, RPC, and serializer layers are transport independent. The implementa
 | Streams | `await writer.write(value, topic)` and `await reader.read(timeout)` over MQTT or ZMQ |
 | RPC | `await requester.call(request)` and `await responder.respond(handler)`, with an ACK and a separate reply |
 | Schemas | `JsonRpcSchema` for JSON-RPC methods; `McpSchema` for MCP tool discovery and calls |
-| Frames | Optional `BoolFrame`, `IntFrame`, `FloatFrame`, `StringFrame`, `BytesFrame`, `DictFrame`, and `ListFrame` |
+| Frames | Optional primitive frames, `ImageFrameRaw`, and `ImageFrameJpeg` for image bytes and metadata |
 | Serialization | MessagePack by default, behind a replaceable serializer interface |
 | ZMQ | Direct TCP PUB/SUB streams and DEALER/ROUTER RPC, interoperable with desktop MAGPIE |
 | MQTT | One `MqttConnection` can be shared by stream and RPC components; `mqtt_as` handles networking and reconnection |
@@ -114,6 +115,12 @@ For the ZMQ command-line tools, install desktop MAGPIE:
 
 ```powershell
 python -m pip install luxai-magpie
+```
+
+For the camera viewer example, install the video extra:
+
+```powershell
+python -m pip install "luxai-magpie[video]"
 ```
 
 For the MQTT command-line tools used below, install its MQTT extra:
@@ -256,6 +263,17 @@ magpie-request tcp://BOARD_IP:5556 "{'jsonrpc':'2.0','id':1,'method':'tools/list
 
 Run the board script and desktop command in separate terminals. The [example guide](examples/README.md#zmq-on-a-local-network) has the full commands, including a tool call.
 
+### JPEG camera stream
+
+On a XIAO ESP32-S3 Sense with a MicroPython firmware that provides the `camera` module, [`zmq_camera_stream.py`](examples/zmq_camera_stream.py) captures VGA JPEG frames and publishes them over ZMQ. Set its Wi-Fi placeholders, then run the board script and desktop viewer in separate terminals:
+
+```powershell
+mpremote connect COM13 run examples/zmq_camera_stream.py
+magpie-video-viewer tcp://BOARD_IP:5559 magpie-upy/esp32-001/camera
+```
+
+The board sends the camera's JPEG bytes unchanged in an `ImageFrameJpeg`; the desktop viewer decodes them. JPEG size varies with the scene and camera quality. See the [example guide](examples/README.md#board-jpeg-camera-stream) for setup details.
+
 ---
 
 ## Core API
@@ -286,6 +304,8 @@ print(restored.value)  # 1
 
 In an async stream, send one with `await writer.write(second, "sensors/count")`. A reader receives a dictionary; use `Frame.from_dict(value)` to reconstruct the typed frame.
 
+`ImageFrameRaw` carries raw image bytes and pixel metadata. `ImageFrameJpeg` carries JPEG bytes already produced by a camera or encoder; the MicroPython frame class does not encode or decode them.
+
 Plain values need no wrapper. The default `MsgpackSerializer` converts values and frames to MessagePack; applications can supply another serializer through the core interfaces. A board without a set clock uses frame timestamp `"0"` rather than a false wall-clock time.
 
 ---
@@ -304,7 +324,7 @@ The core stream/RPC classes and serializer interface do not depend on a specific
 
 The default MQTT payload limit is 4096 bytes. Default stream and RPC publishes use QoS 1. The ZMQ adapter supports TCP with ZMTP 3.0/3.1 NULL security, PUB/SUB streams, and DEALER/ROUTER RPC; it does not provide the full libzmq API or encrypted ZeroMQ mechanisms. ZMQ messages default to an 8192-byte limit, bound sockets accept up to four peers, and a publisher accepts up to 16 subscriptions or 512 prefix bytes per peer; these limits are configurable. Keep NULL-security endpoints on a trusted local network or protected tunnel.
 
-ZMQ stream writers and readers accept `bind`, `queue_size`, and `delivery="reliable"` or `"latest"`. `queue_size` is a bounded application buffer; a writer size of zero adds no application queue. `reliable` retains ordinary ZeroMQ PUB/SUB best-effort behavior, not guaranteed delivery. `latest` favors fresh data: the writer uses a small per-peer send buffer and the reader discards older buffered values on `read()`. This is a MicroPython approximation of desktop MAGPIE's high-water-mark setting, not identical libzmq buffering. WebRTC, audio/video frames, desktop-style CLI tools, and an HTTP MCP server are not included in this device package.
+ZMQ stream writers and readers accept `bind`, `queue_size`, and `delivery="reliable"` or `"latest"`. `queue_size` is a bounded application buffer; a writer size of zero adds no application queue. `reliable` retains ordinary ZeroMQ PUB/SUB best-effort behavior, not guaranteed delivery. `latest` favors fresh data: the writer uses a small per-peer send buffer and the reader discards older buffered values on `read()`. This is a MicroPython approximation of desktop MAGPIE's high-water-mark setting, not identical libzmq buffering. WebRTC, audio capture/playback, desktop-style CLI tools, and an HTTP MCP server are not included in this device package.
 
 For an application with real devices, use your own broker and configure its authentication in `MQTT_CONFIG`. The public broker in these examples is for demonstrations.
 
@@ -321,6 +341,7 @@ For an application with real devices, use your own broker and configure its auth
 | [ZMQ stream reader](examples/zmq_stream_reader.py) | Receives a desktop stream over direct TCP | `magpie-write` |
 | [ZMQ user LED RPC](examples/zmq_rpc_switch.py) | Responds to `on` and `off` over direct TCP | `magpie-request` |
 | [ZMQ MCP tool](examples/zmq_mcp_tool.py) | Serves a tool over direct TCP | `magpie-request` |
+| [ZMQ JPEG camera stream](examples/zmq_camera_stream.py) | Publishes camera JPEG frames over direct TCP | `magpie-video-viewer` |
 
 The [example guide](examples/README.md) pairs every device script with working desktop commands. The [test guide](tests/README.md) covers host checks and ESP32 interoperability checks.
 

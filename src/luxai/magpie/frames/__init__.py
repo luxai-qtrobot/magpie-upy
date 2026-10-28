@@ -10,5 +10,6 @@ from .primitive import (
     DictFrame,
     ListFrame,
 )
+from .image import ImageFrameRaw, ImageFrameJpeg
 
 

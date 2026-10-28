@@ -3,6 +3,7 @@
 import asyncio
 
 from ..stream_writer import StreamWriter
+from ...utils import Logger
 from .zmq_common import Mailbox, parse_endpoint
 from .zmtp import ZmtpPeer
 
@@ -159,7 +160,8 @@ class ZmqStreamWriter(StreamWriter):
                 await entry["peer"].send_multipart(parts)
         except asyncio.CancelledError:
             pass
-        except Exception:
+        except Exception as exc:
+            Logger.warning("ZMQ subscriber send failed: {}".format(exc))
             await entry["peer"].close()
 
     def _fanout(self, parts):

@@ -70,6 +70,8 @@ class Frame:
             if isinstance(name, str):
                 frame.name = name
             return frame
+        if cls is Frame:
+            return frame_type.from_dict(data)
         return frame_type(
             value=data.get("value", _MISSING),
             gid=gid,

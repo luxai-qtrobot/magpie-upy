@@ -1,6 +1,7 @@
 """Small ZMTP 3.x TCP peer for MAGPIE's PUB/SUB and DEALER/ROUTER patterns."""
 
 import asyncio
+import socket
 import struct
 
 
@@ -52,6 +53,10 @@ class ZmtpPeer:
             raise ValueError("ZMTP limits must be positive")
         self.reader = reader
         self.writer = writer
+        try:
+            writer.s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        except (AttributeError, OSError):
+            pass  # Some MicroPython ports do not expose TCP_NODELAY.
         self.socket_type = socket_type
         self.identity = identity.encode() if isinstance(identity, str) else (identity or b"")
         self.max_frame_size = max_frame_size
@@ -141,8 +146,16 @@ class ZmtpPeer:
             last = len(parts) - 1
             for index, part in enumerate(parts):
                 self.writer.write(self._frame_header(1 if index < last else 0, len(part)))
-                self.writer.write(part)
-            await self.writer.drain()
+                if len(part) > 8192:
+                    # MicroPython Stream.write buffers any unsent tail. Bound
+                    # that buffer instead of handing it an entire image.
+                    for offset in range(0, len(part), 8192):
+                        self.writer.write(part[offset:offset + 8192])
+                        await self.writer.drain()
+                else:
+                    self.writer.write(part)
+            if len(parts[-1]) <= 8192:
+                await self.writer.drain()
 
     async def subscribe(self, topic):
         if self.socket_type != "SUB" or self.minor is None:

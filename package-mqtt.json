@@ -7,6 +7,7 @@
     ["luxai/magpie/frames/__init__.py", "src/luxai/magpie/frames/__init__.py"],
     ["luxai/magpie/frames/frame.py", "src/luxai/magpie/frames/frame.py"],
     ["luxai/magpie/frames/primitive.py", "src/luxai/magpie/frames/primitive.py"],
+    ["luxai/magpie/frames/image.py", "src/luxai/magpie/frames/image.py"],
     ["luxai/magpie/serializer/__init__.py", "src/luxai/magpie/serializer/__init__.py"],
     ["luxai/magpie/serializer/base_serializer.py", "src/luxai/magpie/serializer/base_serializer.py"],
     ["luxai/magpie/serializer/msgpack_serializer.py", "src/luxai/magpie/serializer/msgpack_serializer.py"],

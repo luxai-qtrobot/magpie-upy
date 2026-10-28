@@ -146,6 +146,28 @@ counter, and free heap every two seconds. This frame also works with C++
 MAGPIE readers. Initial PUB/SUB messages can be lost while the subscription
 is established.
 
+### Board JPEG camera stream
+
+[`zmq_camera_stream.py`](zmq_camera_stream.py) uses the XIAO ESP32-S3 Sense camera
+and a MicroPython firmware with the `camera` module. Set its `WIFI_SSID` and
+`WIFI_PASSWORD` placeholders, then run it on the board:
+
+```powershell
+mpremote connect COM13 run examples/zmq_camera_stream.py
+```
+
+Install desktop MAGPIE's video extra and open the viewer in a second terminal,
+replacing `BOARD_IP` with the address printed by the board:
+
+```powershell
+python -m pip install "luxai-magpie[video]"
+magpie-video-viewer.exe tcp://BOARD_IP:5559 magpie-upy/esp32-001/camera
+```
+
+The example captures VGA JPEG frames and sends their compressed bytes unchanged
+in `ImageFrameJpeg` messages. Frame sizes vary with the scene and camera quality.
+The writer uses `delivery="latest"` to discard stale frames if a viewer is slow.
+
 ### Desktop publisher to board reader
 
 Run [`zmq_stream_reader.py`](zmq_stream_reader.py) on the board first. It binds

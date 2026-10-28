@@ -10,6 +10,7 @@ import msgpack
 from luxai.magpie.frames import (
     Frame, BoolFrame, IntFrame, FloatFrame, StringFrame,
     BytesFrame, DictFrame, ListFrame,
+    ImageFrameRaw,
 )
 from luxai.magpie.serializer import MsgpackSerializer
 
@@ -49,6 +50,27 @@ class TestFrames(unittest.TestCase):
 
     def test_raw_dictionary_is_not_an_implicit_frame(self):
         self.assertEqual(Frame.from_dict({"x": 1}).to_dict()["name"], "Frame")
+
+    def test_image_frame_matches_desktop_wire_format(self):
+        pixels = b"\x00\x01\x02\x03\x04\x05"
+        frame = ImageFrameRaw(
+            data=pixels, width=2, height=1, channels=3, pixel_format="RGB",
+            gid="FIXED", id=7, timestamp="123.25",
+        )
+        wire = {
+            "gid": "FIXED", "id": 7, "name": "ImageFrameRaw",
+            "timestamp": "123.25", "data": pixels, "format": "raw",
+            "width": 2, "height": 1, "channels": 3, "pixel_format": "RGB",
+        }
+        self.assertEqual(frame.to_dict(), wire)
+        codec = types.ModuleType("umsgpack")
+        codec.dumps = msgpack.packb
+        codec.loads = msgpack.unpackb
+        with patch.dict(sys.modules, {"umsgpack": codec}):
+            serializer = MsgpackSerializer()
+        restored = Frame.from_dict(serializer.deserialize(serializer.serialize(frame)))
+        self.assertIs(type(restored), ImageFrameRaw)
+        self.assertEqual(restored.to_dict(), wire)
 
 
 class TestSerializer(unittest.TestCase):
