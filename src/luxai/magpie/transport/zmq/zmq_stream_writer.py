@@ -43,6 +43,11 @@ class ZmqStreamWriter(StreamWriter):
         self._started = False
         self.dropped = 0
 
+    @property
+    def connected(self):
+        """Whether at least one SUB peer has completed the ZMTP handshake."""
+        return self._connected.is_set()
+
     async def start(self):
         if self._closed:
             raise RuntimeError("writer is closed")
