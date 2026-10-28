@@ -8,17 +8,17 @@
 <p align="center">
   <a href="#installation"><img src="https://img.shields.io/badge/platform-MicroPython-2f855a" alt="Platform: MicroPython"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/boards-ESP32%20%26%20Pico%20W-e69534" alt="Boards: ESP32 and Pico W"/></a>
-  <a href="#features"><img src="https://img.shields.io/badge/transport-MQTT-8b5cf6" alt="Transport: MQTT"/></a>
+  <a href="#features"><img src="https://img.shields.io/badge/transport-ZMQ%20%2B%20MQTT-8b5cf6" alt="Transports: ZMQ and MQTT"/></a>
   <a href="#mcp-tool"><img src="https://img.shields.io/badge/MCP-tools-118e78" alt="MCP tools"/></a>
   <a href="#installation"><img src="https://img.shields.io/badge/install-mip-3b82f6" alt="Install with mip"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-6b7280" alt="License: GPLv3"/></a>
 </p>
 
-MAGPIE for MicroPython brings asynchronous streams, request/reply RPC, typed frames, and MCP tools to embedded boards. It uses the same MQTT topics, MessagePack payloads, and RPC envelopes as [MAGPIE for Python](https://github.com/luxai-qtrobot/magpie), so a MicroPython device can exchange data with desktop applications and tools.
+MAGPIE for MicroPython brings asynchronous streams, request/reply RPC, typed frames, and MCP tools to embedded boards. Its default ZMQ and optional MQTT transports exchange the same MAGPIE MessagePack values and RPC envelopes as [MAGPIE for Python](https://github.com/luxai-qtrobot/magpie), so a MicroPython device can communicate with desktop applications and tools.
 
 Repository: [luxai-qtrobot/magpie-upy](https://github.com/luxai-qtrobot/magpie-upy).
 
-**MQTT is the only transport supplied in this release.** The stream, RPC, and serializer layers remain separate from MQTT, keeping the core API small and allowing other adapters to be added later. The implementation uses MicroPython's `asyncio` rather than desktop MAGPIE's threads.
+The stream, RPC, and serializer layers are transport independent. The implementation uses MicroPython's `asyncio` rather than desktop MAGPIE's threads.
 
 ---
 
@@ -30,6 +30,7 @@ Repository: [luxai-qtrobot/magpie-upy](https://github.com/luxai-qtrobot/magpie-u
   - [Sensor stream](#sensor-stream)
   - [User LED RPC](#user-led-rpc)
   - [MCP tool](#mcp-tool)
+  - [Direct ZMQ on a LAN](#direct-zmq-on-a-lan)
 - [Core API](#core-api)
 - [Architecture and scope](#architecture-and-scope)
 - [Examples and tests](#examples-and-tests)
@@ -42,11 +43,12 @@ Repository: [luxai-qtrobot/magpie-upy](https://github.com/luxai-qtrobot/magpie-u
 
 | Capability | On the MicroPython board |
 |---|---|
-| Streams | `await writer.write(value, topic)` and `await reader.read(timeout)` over MQTT topics |
+| Streams | `await writer.write(value, topic)` and `await reader.read(timeout)` over MQTT or ZMQ |
 | RPC | `await requester.call(request)` and `await responder.respond(handler)`, with an ACK and a separate reply |
 | Schemas | `JsonRpcSchema` for JSON-RPC methods; `McpSchema` for MCP tool discovery and calls |
 | Frames | Optional `BoolFrame`, `IntFrame`, `FloatFrame`, `StringFrame`, `BytesFrame`, `DictFrame`, and `ListFrame` |
 | Serialization | MessagePack by default, behind a replaceable serializer interface |
+| ZMQ | Direct TCP PUB/SUB streams and DEALER/ROUTER RPC, interoperable with desktop MAGPIE |
 | MQTT | One `MqttConnection` can be shared by stream and RPC components; `mqtt_as` handles networking and reconnection |
 | Logging | Small colored `Logger` with debug, info, warning, and error levels |
 
@@ -58,13 +60,13 @@ A stream may carry a plain value or a frame. The board can publish to a desktop 
 
 ### Requirements
 
-- A MicroPython board with `asyncio`, enough memory for the package, and networking supported by the installed `mqtt_as` library. The examples use Wi-Fi.
-- An MQTT broker reachable by the board and its peers. The examples use the public `broker.hivemq.com` broker.
+- A MicroPython board with `asyncio`, TCP networking, and enough memory for the chosen transport. The examples use Wi-Fi.
+- For MQTT, a reachable broker and a board supported by `mqtt_as`. The examples use the public `broker.hivemq.com` broker. ZMQ needs a reachable TCP peer instead of a broker.
 - `mpremote` on your computer to install the package and run the examples over USB.
 
 The package itself does not depend on a specific board. Its MQTT dependency, [`mqtt_as`](https://github.com/peterhinch/micropython-mqtt), documents support for ESP32, ESP8266, Raspberry Pi Pico W, and other MicroPython targets. MAGPIE device testing so far used a Seeed XIAO ESP32-S3 running MicroPython 1.29.0; check firmware, available memory, and networking on other boards. ESP8266 may need `mqtt_as` precompiled or frozen because of its memory limits.
 
-The [`package.json`](package.json) manifest installs MAGPIE, [`mqtt_as`](https://github.com/peterhinch/micropython-mqtt), and [`umsgpack`](https://github.com/peterhinch/micropython-msgpack). `pip` installs the desktop tools on your computer; `mip` installs MicroPython files on the board.
+The default [`package.json`](package.json) installs the shared core, ZMQ adapter, and [`umsgpack`](https://github.com/peterhinch/micropython-msgpack), without `mqtt_as`. The optional [`package-mqtt.json`](package-mqtt.json) installs the shared core, MQTT adapter, `umsgpack`, and [`mqtt_as`](https://github.com/peterhinch/micropython-mqtt). Install both manifests to use both transports. `pip` installs desktop tools on your computer; `mip` installs MicroPython files on the board.
 
 ### Install from this checkout
 
@@ -75,28 +77,46 @@ python -m pip install mpremote
 mpremote connect COM13 mip install package.json
 ```
 
-`mpremote` uses the computer to fetch and copy the package. The board needs network connectivity when it runs an MQTT example.
-
-### Install a tagged release from GitHub
-
-Once the code and `v0.1.0` tag are pushed to [luxai-qtrobot/magpie-upy](https://github.com/luxai-qtrobot/magpie-upy), users can install the tagged version without cloning it:
+For MQTT, install its manifest instead. Install both manifests if you need both transports:
 
 ```powershell
-mpremote connect COM13 mip install github:luxai-qtrobot/magpie-upy@v0.1.0
+mpremote connect COM13 mip install package-mqtt.json
+```
+
+`mpremote` uses the computer to fetch and copy the package. The board needs network connectivity when it runs either transport.
+
+### Install from GitHub
+
+```powershell
+mpremote connect COM13 mip install github:luxai-qtrobot/magpie-upy
+```
+
+For MQTT, use its manifest:
+
+```powershell
+mpremote connect COM13 mip install github:luxai-qtrobot/magpie-upy/package-mqtt.json
 ```
 
 On a network-connected board, the equivalent REPL command is:
 
 ```python
 import mip
-mip.install("github:luxai-qtrobot/magpie-upy", version="v0.1.0")
+mip.install("github:luxai-qtrobot/magpie-upy")
 ```
+
+For MQTT on the board, use `mip.install("github:luxai-qtrobot/magpie-upy/package-mqtt.json")`.
 
 MicroPython's [`mip` package index](https://docs.micropython.org/en/latest/reference/packages.html) is separate from PyPI. MAGPIE for MicroPython is not currently listed in that index, so installation by a bare package name is not yet available. The [`luxai-magpie` PyPI package](https://pypi.org/project/luxai-magpie/) is for desktop Python.
 
 ### Install the desktop companion
 
-For the MQTT command-line tools used below:
+For the ZMQ command-line tools, install desktop MAGPIE:
+
+```powershell
+python -m pip install luxai-magpie
+```
+
+For the MQTT command-line tools used below, install its MQTT extra:
 
 ```powershell
 python -m pip install "luxai-magpie[mqtt]"
@@ -112,7 +132,7 @@ python -m pip install "luxai-magpie[mqtt,mcp]"
 
 ## Quick start
 
-Each script in [`examples/`](examples/README.md) has its own `DEVICE_ID` and `MQTT_CONFIG`. Replace the Wi-Fi placeholders before running a script. Give each board a unique device ID and MQTT client ID. The `server` setting is a hostname such as `broker.hivemq.com`, while desktop MAGPIE accepts an `mqtt://` URL.
+The MQTT examples below require `package-mqtt.json`. Each MQTT script in [`examples/`](examples/README.md) has its own `DEVICE_ID` and `MQTT_CONFIG`. Replace the Wi-Fi placeholders before running a script. Give each board a unique device ID and MQTT client ID. The `server` setting is a hostname such as `broker.hivemq.com`, while desktop MAGPIE accepts an `mqtt://` URL.
 
 ### Sensor stream
 
@@ -218,6 +238,24 @@ asyncio.run(main())
 
 See [the example guide](examples/README.md#mcp-tool) for the full run instructions. `McpSchema` supports MCP tool discovery and calls; the desktop adapter handles the FastMCP client connection.
 
+### Direct ZMQ on a LAN
+
+ZMQ runs directly over TCP without a broker. The application connects Wi-Fi first; the ZMQ classes manage their own TCP/ZMTP connections and reconnects, not the board's Wi-Fi interface. For a board publisher, set the Wi-Fi credentials in [`zmq_sensor_stream.py`](examples/zmq_sensor_stream.py), run it, and note the board IP it prints:
+
+```powershell
+mpremote connect COM13 run examples/zmq_sensor_stream.py
+magpie-read tcp://BOARD_IP:5555 magpie-upy/esp32-001/sensor --pretty
+```
+
+For a simple RPC service, [`zmq_rpc_switch.py`](examples/zmq_rpc_switch.py) controls the XIAO user LED with the same `on` and `off` requests as the MQTT switch example. The board can also serve MCP tools directly. Run [`zmq_mcp_tool.py`](examples/zmq_mcp_tool.py), note the board IP it prints, then call it with `magpie-request`:
+
+```powershell
+mpremote connect COM13 run examples/zmq_mcp_tool.py
+magpie-request tcp://BOARD_IP:5556 "{'jsonrpc':'2.0','id':1,'method':'tools/list'}" --pretty
+```
+
+Run the board script and desktop command in separate terminals. The [example guide](examples/README.md#zmq-on-a-local-network) has the full commands, including a tool call.
+
 ---
 
 ## Core API
@@ -226,12 +264,12 @@ The four application operations match desktop MAGPIE's concepts. On MicroPython,
 
 | Operation | MicroPython API | Result |
 |---|---|---|
-| Publish | `await writer.write(value, topic)` | Sends a value on an MQTT topic |
+| Publish | `await writer.write(value, topic)` | Sends a value on a stream topic |
 | Subscribe | `value, topic = await reader.read(timeout=5)` | Reads the next value and its topic |
 | Request | `reply = await requester.call(request, timeout=5)` | Waits for the RPC reply |
 | Respond | `await responder.respond(handler=handler, timeout=1)` | Handles one request, or returns `False` on timeout |
 
-Create one `MqttConnection` and pass it to any number of stream writers, readers, requesters, and responders. After `await conn.connect()`, call `await reader.start()` or `await responder.start()` before traffic begins so their subscriptions are ready. Close each component with `await component.close()`, then call `conn.close()`. The connection is owned by the application, not by an individual writer or reader.
+For MQTT, create one `MqttConnection` and pass it to stream writers, readers, requesters, and responders. After `await conn.connect()`, call `await reader.start()` or `await responder.start()` before traffic begins so their subscriptions are ready. Close each component with `await component.close()`, then call `conn.close()`. ZMQ classes each take a `tcp://` endpoint; call `await start()` before traffic and `await close()` when finished.
 
 ### Optional frames
 
@@ -258,14 +296,15 @@ Plain values need no wrapper. The default `MsgpackSerializer` converts values an
 MicroPython application
   -> async StreamWriter / StreamReader / RpcRequester / RpcResponder
   -> serializer (MessagePack by default)
-  -> MQTT adapter (one shared mqtt_as connection)
-  -> broker
+  -> ZMQ adapter -> direct TCP peer, or optional MQTT adapter -> broker
   -> desktop MAGPIE, another board, or another compatible peer
 ```
 
-Only the MQTT adapter is included today. The core stream/RPC classes and serializer interface do not depend on MQTT. The implementation uses no worker thread or writer queue; readers and responders have bounded incoming mailboxes. RPC handlers run one at a time per responder, so long-running handlers should yield or be split into shorter work.
+The core stream/RPC classes and serializer interface do not depend on a specific transport. The MQTT writer uses no worker thread or writer queue; its readers and responders have bounded incoming mailboxes. The ZMQ adapter uses bounded async buffers where needed for multiple TCP peers. RPC handlers run one at a time per responder, so long-running handlers should yield or be split into shorter work.
 
-The default MQTT payload limit is 4096 bytes. Default stream and RPC publishes use QoS 1. ZeroMQ, WebRTC, audio/video frames, desktop-style CLI tools, and an HTTP MCP server are not included in this device package.
+The default MQTT payload limit is 4096 bytes. Default stream and RPC publishes use QoS 1. The ZMQ adapter supports TCP with ZMTP 3.0/3.1 NULL security, PUB/SUB streams, and DEALER/ROUTER RPC; it does not provide the full libzmq API or encrypted ZeroMQ mechanisms. ZMQ messages default to an 8192-byte limit, bound sockets accept up to four peers, and a publisher accepts up to 16 subscriptions or 512 prefix bytes per peer; these limits are configurable. Keep NULL-security endpoints on a trusted local network or protected tunnel.
+
+ZMQ stream writers and readers accept `bind`, `queue_size`, and `delivery="reliable"` or `"latest"`. `queue_size` is a bounded application buffer; a writer size of zero adds no application queue. `reliable` retains ordinary ZeroMQ PUB/SUB best-effort behavior, not guaranteed delivery. `latest` favors fresh data: the writer uses a small per-peer send buffer and the reader discards older buffered values on `read()`. This is a MicroPython approximation of desktop MAGPIE's high-water-mark setting, not identical libzmq buffering. WebRTC, audio/video frames, desktop-style CLI tools, and an HTTP MCP server are not included in this device package.
 
 For an application with real devices, use your own broker and configure its authentication in `MQTT_CONFIG`. The public broker in these examples is for demonstrations.
 
@@ -278,20 +317,24 @@ For an application with real devices, use your own broker and configure its auth
 | [Sensor stream](examples/mqtt_sensor_stream.py) | Publishes counter and free heap | `magpie-read-mqtt` |
 | [User LED RPC](examples/mqtt_rpc_switch.py) | Responds to `on` and `off` requests | `magpie-request-mqtt` |
 | [MCP tool](examples/mqtt_mcp_tool.py) | Exposes `free_memory` | `magpie-request-mqtt` or FastMCP `Client` |
+| [ZMQ sensor stream](examples/zmq_sensor_stream.py) | Publishes over direct TCP | `magpie-read` |
+| [ZMQ stream reader](examples/zmq_stream_reader.py) | Receives a desktop stream over direct TCP | `magpie-write` |
+| [ZMQ user LED RPC](examples/zmq_rpc_switch.py) | Responds to `on` and `off` over direct TCP | `magpie-request` |
+| [ZMQ MCP tool](examples/zmq_mcp_tool.py) | Serves a tool over direct TCP | `magpie-request` |
 
 The [example guide](examples/README.md) pairs every device script with working desktop commands. The [test guide](tests/README.md) covers host checks and ESP32 interoperability checks.
 
-To run the host tests from this checkout, install `msgpack` on your computer and run:
+To run the host tests from this checkout, install `msgpack` and `pyzmq` on your computer and run:
 
 ```powershell
-python -m pip install msgpack
+python -m pip install msgpack pyzmq
 $env:PYTHONPATH = (Resolve-Path .\src).Path
 python -m unittest discover -s tests -p "test_*.py"
 ```
 
 On Linux or macOS, use `PYTHONPATH=src python -m unittest discover -s tests -p 'test_*.py'`.
 
-The host MQTT tests use an in-memory broker and need no board. Hardware tests use the board and broker described in [`tests/README.md`](tests/README.md).
+The host MQTT tests use an in-memory broker; the ZMQ tests exchange real TCP frames with PyZMQ. Hardware tests use the board and broker described in [`tests/README.md`](tests/README.md).
 
 ---
 

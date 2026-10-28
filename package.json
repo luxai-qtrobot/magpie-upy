@@ -15,21 +15,19 @@
     ["luxai/magpie/transport/stream_reader.py", "src/luxai/magpie/transport/stream_reader.py"],
     ["luxai/magpie/transport/rpc_requester.py", "src/luxai/magpie/transport/rpc_requester.py"],
     ["luxai/magpie/transport/rpc_responder.py", "src/luxai/magpie/transport/rpc_responder.py"],
-    ["luxai/magpie/transport/mqtt/__init__.py", "src/luxai/magpie/transport/mqtt/__init__.py"],
-    ["luxai/magpie/transport/mqtt/mqtt_connection.py", "src/luxai/magpie/transport/mqtt/mqtt_connection.py"],
-    ["luxai/magpie/transport/mqtt/mqtt_stream_writer.py", "src/luxai/magpie/transport/mqtt/mqtt_stream_writer.py"],
-    ["luxai/magpie/transport/mqtt/mqtt_stream_reader.py", "src/luxai/magpie/transport/mqtt/mqtt_stream_reader.py"],
-    ["luxai/magpie/transport/mqtt/mqtt_rpc_requester.py", "src/luxai/magpie/transport/mqtt/mqtt_rpc_requester.py"],
-    ["luxai/magpie/transport/mqtt/mqtt_rpc_responder.py", "src/luxai/magpie/transport/mqtt/mqtt_rpc_responder.py"],
+    ["luxai/magpie/transport/zmq/__init__.py", "src/luxai/magpie/transport/zmq/__init__.py"],
+    ["luxai/magpie/transport/zmq/zmq_common.py", "src/luxai/magpie/transport/zmq/zmq_common.py"],
+    ["luxai/magpie/transport/zmq/zmtp.py", "src/luxai/magpie/transport/zmq/zmtp.py"],
+    ["luxai/magpie/transport/zmq/zmq_stream_writer.py", "src/luxai/magpie/transport/zmq/zmq_stream_writer.py"],
+    ["luxai/magpie/transport/zmq/zmq_stream_reader.py", "src/luxai/magpie/transport/zmq/zmq_stream_reader.py"],
+    ["luxai/magpie/transport/zmq/zmq_rpc_requester.py", "src/luxai/magpie/transport/zmq/zmq_rpc_requester.py"],
+    ["luxai/magpie/transport/zmq/zmq_rpc_responder.py", "src/luxai/magpie/transport/zmq/zmq_rpc_responder.py"],
     ["luxai/magpie/schema/__init__.py", "src/luxai/magpie/schema/__init__.py"],
     ["luxai/magpie/schema/base_schema.py", "src/luxai/magpie/schema/base_schema.py"],
     ["luxai/magpie/schema/json_rpc_schema.py", "src/luxai/magpie/schema/json_rpc_schema.py"],
     ["luxai/magpie/schema/mcp_schema.py", "src/luxai/magpie/schema/mcp_schema.py"]
   ],
   "deps": [
-    ["github:peterhinch/micropython-mqtt", "master"],
     ["github:peterhinch/micropython-msgpack", "master"]
-  ],
-  "version": "0.1.0"
+  ]
 }
-
